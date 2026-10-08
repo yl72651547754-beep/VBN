@@ -1,0 +1,7 @@
+{
+  "name": "Free VPN Gate",
+  "description": "Free VPN client powered by VPN Gate public servers with ping testing, favorites, and secure tunnel management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
