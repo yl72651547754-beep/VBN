@@ -45,6 +45,22 @@ class ExampleRobolectricTest {
     }
 
     @Test
+    fun `test vpn gate csv parser handles commas in message`() {
+        val sampleCsv = """
+            *vpn_servers
+            #HostName,IP,Score,Ping,Speed,CountryLong,CountryShort,NumVpnSessions,Uptime,TotalUsers,TotalTraffic,LogType,Operator,Message,OpenVPN_ConfigData_Base64
+            public-vpn-2.opengw.net,118.27.100.12,2500000,25,75000000,South Korea,KR,50,90000,15000,8888888,2weeks,Korea Volunteer,"Hello, welcome, fast free VPN!",Y2xpZW50CmRldiB0dW4KcHJvdG8gdWRwCnJlbW90ZSAxMTguMjcuMTAwLjEyIDExOTU=
+            *
+        """.trimIndent()
+
+        val servers = VpnGateCsvParser.parseCsv(sampleCsv)
+        assertEquals(1, servers.size)
+        val s = servers.first()
+        assertEquals("118.27.100.12", s.ip)
+        assertTrue(s.openVpnConfigText.contains("remote 118.27.100.12 1195"))
+    }
+
+    @Test
     fun `test openvpn config parser`() {
         val config = """
             client

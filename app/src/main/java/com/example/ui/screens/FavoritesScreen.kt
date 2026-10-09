@@ -39,8 +39,10 @@ import com.example.ui.theme.DarkSurface
 fun FavoritesScreen(
     favoriteServers: List<VpnServer>,
     vpnStatus: VpnStatus,
+    targetServer: VpnServer?,
     selectedConfigServer: VpnServer?,
     onConnectServer: (Context, VpnServer) -> Unit,
+    onServerSelect: (VpnServer) -> Unit,
     onToggleFavorite: (VpnServer) -> Unit,
     onTestPing: (VpnServer) -> Unit,
     onSelectConfigServer: (VpnServer?) -> Unit,
@@ -102,10 +104,12 @@ fun FavoritesScreen(
                 items(favoriteServers, key = { it.ip }) { server ->
                     val isConnectedServer = (vpnStatus is VpnStatus.Connected && vpnStatus.server.ip == server.ip) ||
                         (vpnStatus is VpnStatus.Connecting && vpnStatus.server.ip == server.ip)
+                    val isTargetServer = targetServer?.ip == server.ip
 
                     ServerCard(
                         server = server,
-                        isSelected = isConnectedServer,
+                        isSelected = isConnectedServer || isTargetServer,
+                        onCardClick = { onServerSelect(server) },
                         onConnectClick = { onConnectServer(context, server) },
                         onFavoriteToggle = { onToggleFavorite(server) },
                         onTestPingClick = { onTestPing(server) },

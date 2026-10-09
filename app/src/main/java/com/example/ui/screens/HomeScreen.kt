@@ -2,7 +2,6 @@ package com.example.ui.screens
 
 import android.content.Context
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +25,8 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -77,6 +78,7 @@ fun HomeScreen(
     availableCountries: List<String>,
     filterSort: FilterSortOptions,
     vpnStatus: VpnStatus,
+    targetServer: VpnServer?,
     statistics: VpnStatistics,
     isRefreshing: Boolean,
     showSecurityWarning: Boolean,
@@ -84,6 +86,7 @@ fun HomeScreen(
     onRefresh: () -> Unit,
     onConnectServer: (Context, VpnServer) -> Unit,
     onToggleConnection: () -> Unit,
+    onServerSelect: (VpnServer) -> Unit,
     onToggleFavorite: (VpnServer) -> Unit,
     onTestPing: (VpnServer) -> Unit,
     onSearchChange: (String) -> Unit,
@@ -185,6 +188,7 @@ fun HomeScreen(
             item {
                 ConnectionControlCard(
                     status = vpnStatus,
+                    targetServer = targetServer,
                     statistics = statistics,
                     onToggleConnection = onToggleConnection
                 )
@@ -348,6 +352,18 @@ fun HomeScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = onRefresh,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = PrimaryCyan,
+                                    contentColor = Color.Black
+                                )
+                            ) {
+                                Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = stringResource(R.string.btn_refresh), fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -355,10 +371,12 @@ fun HomeScreen(
                 items(servers, key = { it.ip }) { server ->
                     val isConnectedServer = (vpnStatus is VpnStatus.Connected && vpnStatus.server.ip == server.ip) ||
                         (vpnStatus is VpnStatus.Connecting && vpnStatus.server.ip == server.ip)
+                    val isTargetServer = targetServer?.ip == server.ip
 
                     ServerCard(
                         server = server,
-                        isSelected = isConnectedServer,
+                        isSelected = isConnectedServer || isTargetServer,
+                        onCardClick = { onServerSelect(server) },
                         onConnectClick = { onConnectServer(context, server) },
                         onFavoriteToggle = { onToggleFavorite(server) },
                         onTestPingClick = { onTestPing(server) },

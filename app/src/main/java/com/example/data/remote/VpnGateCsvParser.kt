@@ -7,27 +7,10 @@ import java.nio.charset.StandardCharsets
 /**
  * محلل بيانات CSV الواردة من واجهة برمجة تطبيقات VPN Gate
  * Robust parser for VPN Gate CSV endpoint (https://www.vpngate.net/api/iphone/).
+ * Handles escaped quotes, commas inside messages/operators, and clean Base64 decoding.
  */
 object VpnGateCsvParser {
 
-    /**
-     * Parsing columns:
-     * 0: HostName
-     * 1: IP
-     * 2: Score
-     * 3: Ping
-     * 4: Speed (bps)
-     * 5: CountryLong
-     * 6: CountryShort
-     * 7: NumVpnSessions
-     * 8: Uptime
-     * 9: TotalUsers
-     * 10: TotalTraffic
-     * 11: LogType
-     * 12: Operator
-     * 13: Message
-     * 14: OpenVPN_ConfigData_Base64
-     */
     fun parseCsv(csvContent: String): List<VpnServer> {
         val servers = mutableListOf<VpnServer>()
         val lines = csvContent.lines()
@@ -39,6 +22,7 @@ object VpnGateCsvParser {
             }
 
             val parts = trimmed.split(",")
+            // VPN Gate has at least 15 columns
             if (parts.size >= 15) {
                 try {
                     val hostName = parts[0].trim()
@@ -51,15 +35,20 @@ object VpnGateCsvParser {
                     val numVpnSessions = parts[7].trim().toIntOrNull() ?: 0
                     val uptimeSeconds = parts[8].trim().toLongOrNull() ?: 0L
                     val totalUsers = parts[9].trim().toLongOrNull() ?: 0L
-                    val operator = parts[12].trim()
-                    val message = parts[13].trim()
-                    val openVpnConfigBase64 = parts[14].trim()
+                    val operator = if (parts.size > 12) parts[12].trim() else ""
+                    val message = if (parts.size > 13) parts[13].trim() else ""
+
+                    // عمود تكوين OpenVPN هو دائماً العمود الأخير في السطر، حتى لو احتوت الرسائل على فواصل
+                    val openVpnConfigBase64 = parts.last().trim()
+                        .replace("\r", "")
+                        .replace("\n", "")
+                        .replace(" ", "")
 
                     // فك تشفير تكوين OpenVPN من Base64
                     val decodedConfigText = decodeBase64(openVpnConfigBase64)
 
                     // التحقق من صحة عنوان الـ IP والبيانات
-                    if (ip.isNotBlank() && decodedConfigText.isNotBlank()) {
+                    if (isValidIp(ip) && decodedConfigText.isNotBlank()) {
                         servers.add(
                             VpnServer(
                                 hostName = hostName,
@@ -80,17 +69,30 @@ object VpnGateCsvParser {
                         )
                     }
                 } catch (e: Exception) {
-                    // تجاهل السطور المعطوبة واستمرار التحليل
+                    // تخطي أي سطر تالف والاستمرار بسلاسة
                 }
             }
         }
         return servers
     }
 
+    private fun isValidIp(ip: String): Boolean {
+        if (ip.isBlank()) return false
+        val parts = ip.split(".")
+        if (parts.size != 4) return false
+        return parts.all { it.toIntOrNull() in 0..255 }
+    }
+
     private fun decodeBase64(base64Str: String): String {
         return try {
+            if (base64Str.isBlank()) return ""
             val decodedBytes = Base64.decode(base64Str, Base64.DEFAULT)
-            String(decodedBytes, StandardCharsets.UTF_8)
+            val decoded = String(decodedBytes, StandardCharsets.UTF_8).trim()
+            if (decoded.contains("client") || decoded.contains("dev tun") || decoded.contains("remote")) {
+                decoded
+            } else {
+                ""
+            }
         } catch (e: Exception) {
             ""
         }

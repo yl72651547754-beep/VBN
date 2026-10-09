@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
@@ -62,6 +63,7 @@ import com.example.ui.theme.StatusRed
 @Composable
 fun ConnectionControlCard(
     status: VpnStatus,
+    targetServer: VpnServer?,
     statistics: VpnStatistics,
     onToggleConnection: () -> Unit,
     modifier: Modifier = Modifier
@@ -136,7 +138,7 @@ fun ConnectionControlCard(
                                 colors = listOf(buttonColor, buttonColor.copy(alpha = 0.75f))
                             )
                         )
-                        .border(3.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+                        .border(3.dp, Color.White.copy(alpha = 0.35f), CircleShape)
                         .clickable(enabled = !isDisconnecting) { onToggleConnection() }
                         .testTag("vpn_power_button")
                 ) {
@@ -159,7 +161,7 @@ fun ConnectionControlCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // معلومات الخادم المتصل
+            // معلومات الخادم المتصل أو المحدد
             when (status) {
                 is VpnStatus.Connected -> {
                     ServerInfoDisplay(server = status.server)
@@ -185,12 +187,40 @@ fun ConnectionControlCard(
                     )
                 }
                 else -> {
-                    Text(
-                        text = stringResource(R.string.status_disconnected),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (targetServer != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Bolt,
+                                contentDescription = null,
+                                tint = PrimaryCyan,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "${targetServer.flagEmoji} ${targetServer.countryLong} (${targetServer.ip})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Text(
+                            text = "Ping: ${targetServer.effectivePing}ms • ${targetServer.formattedSpeed} • اضغط للاتصال",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text(
+                            text = "⚡ اتصال سريع بالأسرع",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryCyan
+                        )
+                        Text(
+                            text = "اضغط على الزر للاتصال بأفضل خادم تلقائياً",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 

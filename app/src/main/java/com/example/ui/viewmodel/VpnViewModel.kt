@@ -44,6 +44,10 @@ class VpnViewModel(
     private val _selectedConfigServer = MutableStateFlow<VpnServer?>(null)
     val selectedConfigServer: StateFlow<VpnServer?> = _selectedConfigServer.asStateFlow()
 
+    // الخادم المستهدف المحدد يدوياً أو تلقائياً للاتصال السريع
+    private val _selectedTargetServer = MutableStateFlow<VpnServer?>(null)
+    val selectedTargetServer: StateFlow<VpnServer?> = _selectedTargetServer.asStateFlow()
+
     val availableCountries: StateFlow<List<String>> = repository.availableCountries
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -91,8 +95,16 @@ class VpnViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        // جلب الخوادم عند تشغيل التطبيق لأول مرة
-        refreshServers(isSilent = true)
+        viewModelScope.launch {
+            // ضمان وجود خوادم فورية للمستخدم دون انتظار
+            repository.ensureInitialServers()
+            // جلب أحدث الخوادم من الإنترنت في الخلفية
+            refreshServers(isSilent = true)
+        }
+    }
+
+    fun selectTargetServer(server: VpnServer?) {
+        _selectedTargetServer.value = server
     }
 
     fun refreshServers(isSilent: Boolean = false) {
@@ -104,12 +116,12 @@ class VpnViewModel(
             result.fold(
                 onSuccess = { count ->
                     if (!isSilent) {
-                        _userMessage.emit("Updated $count servers")
+                        _userMessage.emit("تم تحديث $count خادم بنجاح")
                     }
                 },
                 onFailure = { error ->
                     if (!isSilent) {
-                        _userMessage.emit(error.localizedMessage ?: "Failed to update servers")
+                        _userMessage.emit("تعذر تحديث الخوادم: ${error.localizedMessage}")
                     }
                 }
             )
@@ -126,9 +138,9 @@ class VpnViewModel(
         viewModelScope.launch {
             val latency = repository.testPing(server)
             if (latency > 0) {
-                _userMessage.emit("${server.countryLong} Ping: ${latency}ms")
+                _userMessage.emit("${server.countryLong} (${server.ip}): ${latency} ms")
             } else {
-                _userMessage.emit("${server.countryLong} Ping failed (unreachable)")
+                _userMessage.emit("${server.countryLong}: تعذر الوصول للخادم حالياً")
             }
         }
     }
@@ -158,6 +170,7 @@ class VpnViewModel(
     }
 
     fun connectToServer(context: Context, server: VpnServer) {
+        _selectedTargetServer.value = server
         VpnController.connect(context, server)
     }
 

@@ -42,4 +42,13 @@ interface VpnServerDao {
 
     @Query("SELECT DISTINCT countryShort FROM vpn_servers ORDER BY countryShort ASC")
     fun getAvailableCountryCodes(): Flow<List<String>>
+
+    @Query("SELECT COUNT(*) FROM vpn_servers")
+    suspend fun getServerCount(): Int
+
+    @Query("SELECT * FROM vpn_servers WHERE isFavorite = 1")
+    suspend fun getAllFavoriteEntities(): List<VpnServerEntity>
+
+    @Query("SELECT * FROM vpn_servers ORDER BY pingMs ASC, speedBps DESC LIMIT 1")
+    suspend fun getBestServer(): VpnServerEntity?
 }

@@ -137,6 +137,10 @@ fun MainAppScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val showSecurityWarning by viewModel.showSecurityWarning.collectAsStateWithLifecycle()
     val selectedConfigServer by viewModel.selectedConfigServer.collectAsStateWithLifecycle()
+    val selectedTargetServer by viewModel.selectedTargetServer.collectAsStateWithLifecycle()
+
+    // الخادم المستهدف النشط أو المقترح
+    val effectiveTarget = selectedTargetServer ?: filteredServers.firstOrNull() ?: favoriteServers.firstOrNull()
 
     // التعامل مع زر الرجوع
     BackHandler(enabled = selectedTab != 0) {
@@ -224,20 +228,26 @@ fun MainAppScreen(
                 availableCountries = availableCountries,
                 filterSort = filterSort,
                 vpnStatus = vpnStatus,
+                targetServer = effectiveTarget,
                 statistics = statistics,
                 isRefreshing = isRefreshing,
                 showSecurityWarning = showSecurityWarning,
                 selectedConfigServer = selectedConfigServer,
                 onRefresh = { viewModel.refreshServers() },
-                onConnectServer = { ctx, server -> requestConnect(ctx, server) },
+                onConnectServer = { ctx, server ->
+                    viewModel.selectTargetServer(server)
+                    requestConnect(ctx, server)
+                },
                 onToggleConnection = {
                     if (vpnStatus is VpnStatus.Connected || vpnStatus is VpnStatus.Connecting) {
                         viewModel.disconnect(context)
-                    } else if (filteredServers.isNotEmpty()) {
-                        // الاتصال بأول وأسرع خادم متوفر في القائمة الحالية
-                        requestConnect(context, filteredServers.first())
+                    } else if (effectiveTarget != null) {
+                        requestConnect(context, effectiveTarget)
+                    } else {
+                        viewModel.refreshServers()
                     }
                 },
+                onServerSelect = { viewModel.selectTargetServer(it) },
                 onToggleFavorite = { viewModel.toggleFavorite(it) },
                 onTestPing = { viewModel.testPing(it) },
                 onSearchChange = { viewModel.updateSearchQuery(it) },
@@ -251,8 +261,13 @@ fun MainAppScreen(
             1 -> FavoritesScreen(
                 favoriteServers = favoriteServers,
                 vpnStatus = vpnStatus,
+                targetServer = effectiveTarget,
                 selectedConfigServer = selectedConfigServer,
-                onConnectServer = { ctx, server -> requestConnect(ctx, server) },
+                onConnectServer = { ctx, server ->
+                    viewModel.selectTargetServer(server)
+                    requestConnect(ctx, server)
+                },
+                onServerSelect = { viewModel.selectTargetServer(it) },
                 onToggleFavorite = { viewModel.toggleFavorite(it) },
                 onTestPing = { viewModel.testPing(it) },
                 onSelectConfigServer = { viewModel.selectConfigServer(it) },
